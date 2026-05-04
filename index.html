@@ -4,18 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PDF Merger — Free & Private</title>
-<meta name="description" content="Merge PDFs for free. Drag to reorder, select page ranges. Runs entirely in your browser — nothing uploaded to any server.">
-
-<!-- Fonts -->
+<meta name="description" content="Merge PDFs for free. Gallery or list view, drag to reorder, sort, select page ranges. Runs entirely in your browser.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-
-<!-- Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
-
 <style>
-/* ─── TOKENS ──────────────────────────────────────────────── */
+/* ─── TOKENS ─────────────────────────────────────────────── */
 :root {
   --bg:          #F9F8F5;
   --surface:     #FFFFFF;
@@ -31,574 +26,309 @@
   --green-bg:    #F0FDF4;
   --green-border:#BBF7D0;
   --red:         #DC2626;
+  --blue:        #2563EB;
   --r: 10px;
-  --sans:  'IBM Plex Sans', sans-serif;
-  --mono:  'IBM Plex Mono', monospace;
+  --sans:    'IBM Plex Sans', sans-serif;
+  --mono:    'IBM Plex Mono', monospace;
   --display: 'Unbounded', sans-serif;
-  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow:    0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
   --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,.14), 0 4px 12px rgba(0,0,0,.08);
 }
-
-/* ─── RESET ───────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 14px;
-  line-height: 1.5;
-  min-height: 100vh;
+  background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-size: 14px; line-height: 1.5; min-height: 100vh;
 }
-
-/* ─── NOISE TEXTURE OVERLAY ────────────────────────────────── */
 body::before {
-  content: '';
-  position: fixed; inset: 0;
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
 }
+.page { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 0 20px 80px; }
 
-/* ─── LAYOUT ──────────────────────────────────────────────── */
-.page {
-  position: relative; z-index: 1;
-  max-width: 780px;
-  margin: 0 auto;
-  padding: 0 20px 80px;
-}
-
-/* ─── HEADER ──────────────────────────────────────────────── */
-header {
-  padding: 36px 0 40px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-.wordmark {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.wordmark-title {
-  font-family: var(--display);
-  font-size: clamp(22px, 4vw, 32px);
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
+/* HEADER */
+header { padding: 36px 0 32px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.wordmark-title { font-family: var(--display); font-size: clamp(22px,4vw,30px); font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
 .wordmark-title span { color: var(--accent); }
-.wordmark-sub {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-  letter-spacing: 0.05em;
-}
+.wordmark-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 5px; }
 .privacy-badge {
-  background: var(--green-bg);
-  border: 1px solid var(--green-border);
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--green);
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 4px;
+  background: var(--green-bg); border: 1px solid var(--green-border); border-radius: 999px;
+  padding: 5px 12px; font-family: var(--mono); font-size: 11px; color: var(--green);
+  white-space: nowrap; display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-shrink: 0;
 }
+.step-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); margin-bottom: 10px; }
 
-/* ─── STEP LABEL ──────────────────────────────────────────── */
-.step-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--faint);
-  margin-bottom: 10px;
-}
-
-/* ─── DROP ZONE ───────────────────────────────────────────── */
+/* DROP ZONE */
 .drop-zone {
-  position: relative;
-  background: var(--surface);
-  border: 2px dashed var(--border-2);
-  border-radius: var(--r);
-  padding: 52px 24px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color .2s, background .2s, transform .15s;
-  box-shadow: var(--shadow);
-  margin-bottom: 28px;
-  overflow: hidden;
+  position: relative; background: var(--surface); border: 2px dashed var(--border-2);
+  border-radius: var(--r); padding: 48px 24px; text-align: center; cursor: pointer;
+  transition: border-color .2s, background .2s, transform .15s; box-shadow: var(--shadow); margin-bottom: 28px; overflow: hidden;
 }
 .drop-zone::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, rgba(255,77,0,.04) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity .3s;
-  pointer-events: none;
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(255,77,0,.05) 0%, transparent 70%);
+  opacity: 0; transition: opacity .3s;
 }
-.drop-zone:hover::after,
-.drop-zone.drag-over::after { opacity: 1; }
-.drop-zone:hover,
-.drop-zone.drag-over {
-  border-color: var(--accent);
-  background: var(--accent-bg);
-}
+.drop-zone:hover::after, .drop-zone.drag-over::after { opacity: 1; }
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: var(--accent-bg); }
 .drop-zone.drag-over { transform: scale(1.01); }
-.drop-zone input[type="file"] {
-  position: absolute; inset: 0;
-  opacity: 0; cursor: pointer;
-  width: 100%; height: 100%;
-}
-.dz-icon {
-  font-size: 40px;
-  margin-bottom: 14px;
-  display: block;
-  filter: grayscale(0.2);
-}
-.dz-title {
-  font-family: var(--display);
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 6px;
-  letter-spacing: -0.01em;
-}
-.dz-sub {
-  font-size: 12px;
-  color: var(--muted);
-  font-family: var(--mono);
-}
+.drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.dz-icon { font-size: 38px; margin-bottom: 12px; display: block; }
+.dz-title { font-family: var(--display); font-size: 15px; font-weight: 700; margin-bottom: 5px; letter-spacing: -0.01em; }
+.dz-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
 .dz-sub strong { color: var(--accent); }
 
-/* ─── FILE LIST ───────────────────────────────────────────── */
+/* QUEUE */
 #queue-section { display: none; }
 #queue-section.visible { display: block; }
 
-.queue-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-  gap: 10px;
-}
-.queue-count {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--muted);
-  flex: 1;
-}
+/* TOOLBAR */
+.toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.queue-count { font-family: var(--mono); font-size: 12px; color: var(--muted); flex: 1; min-width: 100px; }
 .queue-count strong { color: var(--text); }
-.link-btn {
-  background: none;
-  border: none;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
-  transition: color .15s, background .15s;
-}
-.link-btn:hover { color: var(--red); background: #FEF2F2; }
 
-#file-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 24px;
-}
+/* view toggle */
+.view-toggle { display: flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; background: var(--surface); }
+.view-btn { padding: 6px 10px; background: transparent; border: none; cursor: pointer; color: var(--muted); font-size: 15px; transition: all .15s; line-height: 1; border-right: 1px solid var(--border); }
+.view-btn:last-child { border-right: none; }
+.view-btn.active { background: var(--accent-bg); color: var(--accent); }
+.view-btn:hover:not(.active) { background: var(--bg); color: var(--text); }
 
-/* ─── FILE CARD ───────────────────────────────────────────── */
+/* sort */
+.sort-wrap { position: relative; }
+.sort-btn { display: flex; align-items: center; gap: 5px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; cursor: pointer; font-family: var(--mono); font-size: 11px; color: var(--muted); transition: all .15s; white-space: nowrap; }
+.sort-btn:hover, .sort-btn.menu-open { border-color: var(--border-2); color: var(--text); background: var(--bg); }
+.sort-menu { position: absolute; top: calc(100% + 5px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); z-index: 200; overflow: hidden; min-width: 175px; display: none; }
+.sort-menu.open { display: block; }
+.sort-group { padding: 4px 0; border-bottom: 1px solid var(--border); }
+.sort-group:last-child { border-bottom: none; }
+.sort-opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 12px; background: transparent; border: none; font-family: var(--mono); font-size: 11px; color: var(--text); cursor: pointer; transition: background .12s; }
+.sort-opt:hover { background: var(--bg); }
+.sort-opt.active { color: var(--accent); }
+
+/* toolbar buttons */
+.tb-btn { padding: 6px 10px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11px; color: var(--muted); cursor: pointer; transition: all .15s; white-space: nowrap; position: relative; overflow: hidden; }
+.tb-btn input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.tb-btn:hover { border-color: var(--border-2); color: var(--text); background: var(--bg); }
+.tb-btn.danger:hover { border-color: var(--red); color: var(--red); background: #FEF2F2; }
+
+/* ─── GALLERY VIEW ───────────────────────────────────────── */
+#file-list.gallery-view {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.gallery-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+  box-shadow: var(--shadow); overflow: hidden; cursor: grab;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+  animation: popIn .22s cubic-bezier(.34,1.5,.64,1); user-select: none; position: relative;
+}
+@keyframes popIn { from { opacity:0; transform:scale(.88); } to { opacity:1; transform:scale(1); } }
+.gallery-card:hover { border-color: var(--border-2); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.gallery-card:active { cursor: grabbing; }
+.gallery-card.sortable-ghost { opacity: .28; transform: scale(.94); }
+.gallery-card.sortable-chosen { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,77,0,.15); }
+
+.gc-thumb { height: 108px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.gc-thumb-bg { position: absolute; inset: 0; opacity: .22; }
+.gc-thumb-icon { font-size: 44px; position: relative; z-index: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.12)); }
+.gc-seq { position: absolute; top: 7px; left: 8px; font-family: var(--mono); font-size: 11px; font-weight: 500; background: rgba(0,0,0,.52); color: #fff; padding: 1px 6px; border-radius: 4px; z-index: 2; }
+.gc-remove { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; background: rgba(0,0,0,.5); border: none; border-radius: 4px; color: #fff; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s, background .15s; z-index: 2; }
+.gallery-card:hover .gc-remove { opacity: 1; }
+.gc-remove:hover { background: var(--red) !important; }
+
+.gc-info { padding: 8px 9px 10px; border-top: 1px solid var(--border); }
+.gc-name { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
+.gc-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.gc-range-badge { font-family: var(--mono); font-size: 9px; padding: 2px 5px; border-radius: 3px; background: var(--accent-bg); color: var(--accent); border: 1px solid rgba(255,77,0,.2); cursor: pointer; }
+.gc-range-badge:hover { background: var(--accent); color: #fff; }
+
+.gc-actions { position: absolute; bottom: 0; left: 0; right: 0; padding: 5px 6px; display: flex; gap: 4px; background: linear-gradient(to top, rgba(255,255,255,.96) 0%, transparent 100%); opacity: 0; transition: opacity .15s; z-index: 2; }
+.gallery-card:hover .gc-actions { opacity: 1; }
+.gc-action-btn { flex: 1; font-family: var(--mono); font-size: 9px; padding: 4px 2px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; text-align: center; transition: all .12s; }
+.gc-action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+/* ─── LIST VIEW ──────────────────────────────────────────── */
+#file-list.list-view { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
 .file-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  transition: border-color .15s, box-shadow .15s;
-  animation: slideIn .2s ease;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+  box-shadow: var(--shadow); overflow: hidden;
+  transition: border-color .15s, box-shadow .15s; animation: slideIn .2s ease;
 }
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+@keyframes slideIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }
 .file-card:hover { border-color: var(--border-2); box-shadow: var(--shadow-md); }
 .file-card.sortable-ghost { opacity: .35; }
 .file-card.sortable-chosen { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,77,0,.12); }
-
-.card-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-}
-.drag-handle {
-  cursor: grab;
-  color: var(--faint);
-  font-size: 18px;
-  flex-shrink: 0;
-  line-height: 1;
-  user-select: none;
-  transition: color .15s;
-}
+.card-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+.drag-handle { cursor: grab; color: var(--faint); font-size: 18px; flex-shrink: 0; line-height: 1; user-select: none; transition: color .15s; }
 .drag-handle:hover { color: var(--muted); }
 .drag-handle:active { cursor: grabbing; }
-
-.seq-num {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent);
-  min-width: 20px;
-  text-align: right;
-  flex-shrink: 0;
-}
+.seq-num { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--accent); min-width: 20px; text-align: right; flex-shrink: 0; }
 .file-icon { font-size: 20px; flex-shrink: 0; }
 .file-info { flex: 1; min-width: 0; }
-.file-name {
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.file-meta {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
+.file-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
 .card-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-
-/* range toggle */
-.range-btn {
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 4px 9px;
-  border-radius: 5px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all .15s;
-  white-space: nowrap;
-}
-.range-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
-.range-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
-
-.remove-btn {
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--faint);
-  cursor: pointer;
-  font-size: 16px;
-  display: flex; align-items: center; justify-content: center;
-  transition: all .15s;
-  flex-shrink: 0;
-}
+.ic-btn { font-family: var(--mono); font-size: 10px; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all .15s; white-space: nowrap; }
+.ic-btn:hover { border-color: var(--border-2); color: var(--text); }
+.ic-btn.range-active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.ic-btn.dup { }
+.ic-btn.dup:hover { border-color: var(--blue); color: var(--blue); background: #EFF6FF; }
+.remove-btn { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; color: var(--faint); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
 .remove-btn:hover { background: #FEF2F2; color: var(--red); }
 
-/* ─── PAGE RANGE PANEL ─────────────────────────────────────── */
-.range-panel {
-  border-top: 1px solid var(--border);
-  background: var(--bg);
-  padding: 14px;
-  display: none;
-  gap: 12px;
-  flex-direction: column;
-}
+/* range panel (list) */
+.range-panel { border-top: 1px solid var(--border); background: var(--bg); padding: 14px; display: none; flex-direction: column; gap: 12px; }
 .range-panel.open { display: flex; }
-
-.range-input-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.range-lbl {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.range-input {
-  font-family: var(--mono);
-  font-size: 12px;
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  width: 180px;
-  outline: none;
-  transition: border-color .15s;
-}
-.range-input:focus { border-color: var(--accent); }
-.range-input.error { border-color: var(--red); background: #FEF2F2; }
-
-.quick-tags { display: flex; gap: 5px; flex-wrap: wrap; }
-.qtag {
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--muted);
-  cursor: pointer;
-  transition: all .15s;
-}
+.rp-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rp-lbl { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.rp-input { font-family: var(--mono); font-size: 12px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); width: 180px; outline: none; transition: border-color .15s; }
+.rp-input:focus { border-color: var(--accent); }
+.rp-input.error { border-color: var(--red); background: #FEF2F2; }
+.qtags { display: flex; gap: 5px; flex-wrap: wrap; }
+.qtag { font-family: var(--mono); font-size: 10px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; transition: all .15s; }
 .qtag:hover { border-color: var(--border-2); color: var(--text); }
+.rp-preview { font-family: var(--mono); font-size: 10px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; color: var(--muted); min-height: 28px; }
+.pages-label { color: var(--accent); }
+.error-label { color: var(--red); }
 
-.range-preview {
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 6px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--muted);
-  min-height: 28px;
-}
-.range-preview .pages-label { color: var(--accent); }
-.range-preview .error-label { color: var(--red); }
+/* ─── RANGE MODAL ────────────────────────────────────────── */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); backdrop-filter: blur(3px); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-backdrop.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 24px; width: 100%; max-width: 420px; animation: modalIn .2s cubic-bezier(.34,1.4,.64,1); display: flex; flex-direction: column; gap: 16px; }
+@keyframes modalIn { from { opacity:0; transform:scale(.92) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+.modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.modal-title { font-family: var(--display); font-size: 14px; font-weight: 700; letter-spacing: -0.01em; }
+.modal-filename { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+.modal-close { background: transparent; border: none; cursor: pointer; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px; border-radius: 5px; transition: all .15s; flex-shrink: 0; }
+.modal-close:hover { color: var(--red); background: #FEF2F2; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-apply { background: var(--accent); color: #fff; border: none; padding: 8px 18px; font-size: 13px; border-radius: 7px; font-family: var(--sans); font-weight: 600; cursor: pointer; transition: background .15s; }
+.btn-apply:hover { background: var(--accent-dark); }
+.btn-cancel { background: transparent; color: var(--muted); border: 1px solid var(--border-2); padding: 8px 14px; font-size: 13px; border-radius: 7px; font-family: var(--sans); cursor: pointer; transition: all .15s; }
+.btn-cancel:hover { border-color: var(--border-2); color: var(--text); background: var(--bg); }
 
-/* ─── MERGE CONTROLS ────────────────────────────────────────── */
-.merge-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  box-shadow: var(--shadow);
-  padding: 18px 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.output-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 200px;
-}
+/* ─── MERGE CARD ─────────────────────────────────────────── */
+.merge-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); padding: 18px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.output-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px; }
 .output-lbl { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
-.output-input {
-  font-family: var(--mono);
-  font-size: 12px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  flex: 1;
-  outline: none;
-  transition: border-color .15s;
-}
+.output-input { font-family: var(--mono); font-size: 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); flex: 1; outline: none; transition: border-color .15s; }
 .output-input:focus { border-color: var(--accent); }
-
-/* ─── BIG MERGE BUTTON ─────────────────────────────────────── */
-.btn-merge {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: var(--r);
-  padding: 11px 24px;
-  font-family: var(--display);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background .15s, transform .1s;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(255,77,0,.3);
-}
+.btn-merge { background: var(--accent); color: #fff; border: none; border-radius: var(--r); padding: 11px 24px; font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background .15s, transform .1s; white-space: nowrap; box-shadow: 0 2px 8px rgba(255,77,0,.3); }
 .btn-merge:hover:not(:disabled) { background: var(--accent-dark); }
 .btn-merge:active:not(:disabled) { transform: scale(.98); }
 .btn-merge:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
 
-/* ─── PROGRESS ─────────────────────────────────────────────── */
-#progress-section {
-  display: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  box-shadow: var(--shadow);
-  padding: 20px;
-  margin-top: 16px;
-}
+/* PROGRESS */
+#progress-section { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; margin-top: 16px; }
 #progress-section.visible { display: block; }
-.prog-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
+.prog-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .prog-text { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .prog-pct  { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 500; }
-.prog-track {
-  height: 4px;
-  background: var(--border);
-  border-radius: 99px;
-  overflow: hidden;
-}
-.prog-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), #FF7A40);
-  border-radius: 99px;
-  transition: width .35s ease;
-  width: 0%;
-}
+.prog-track { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #FF7A40); border-radius: 99px; transition: width .35s ease; width: 0%; }
 
-/* ─── RESULT ────────────────────────────────────────────────── */
-#result-section {
-  display: none;
-  background: var(--green-bg);
-  border: 1px solid var(--green-border);
-  border-radius: var(--r);
-  padding: 20px;
-  margin-top: 16px;
-  animation: fadeUp .3s ease;
-}
+/* RESULT */
+#result-section { display: none; background: var(--green-bg); border: 1px solid var(--green-border); border-radius: var(--r); padding: 20px; margin-top: 16px; animation: fadeUp .3s ease; }
 #result-section.visible { display: flex; flex-direction: column; gap: 14px; }
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 .result-top { display: flex; align-items: flex-start; gap: 12px; }
 .result-emoji { font-size: 28px; }
-.result-title {
-  font-family: var(--display);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--green);
-  letter-spacing: -0.01em;
-}
-.result-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
-.result-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-
-.btn {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 9px 18px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all .15s;
-}
-.btn-dl {
-  background: var(--green);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(22,163,74,.3);
-}
+.result-title { font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--green); }
+.result-meta  { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; }
+.result-btns  { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 8px; border: 1px solid transparent; font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; }
+.btn-dl { background: var(--green); color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,.3); }
 .btn-dl:hover { background: #15803D; }
-.btn-ghost {
-  background: transparent;
-  color: var(--muted);
-  border-color: var(--border-2);
-}
+.btn-ghost { background: transparent; color: var(--muted); border-color: var(--border-2); }
 .btn-ghost:hover { background: var(--surface); color: var(--text); }
 
-/* ─── FOOTER ────────────────────────────────────────────────── */
-footer {
-  text-align: center;
-  padding: 32px 0 0;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--faint);
-  border-top: 1px solid var(--border);
-  margin-top: 48px;
-  line-height: 2;
-}
+/* FOOTER */
+footer { text-align: center; padding: 32px 0 0; font-family: var(--mono); font-size: 11px; color: var(--faint); border-top: 1px solid var(--border); margin-top: 48px; line-height: 2; }
 footer a { color: var(--muted); text-decoration: none; }
 footer a:hover { color: var(--accent); }
 
-/* ─── TOAST ─────────────────────────────────────────────────── */
-#toast {
-  position: fixed;
-  bottom: 24px; right: 24px;
-  background: var(--text);
-  color: #fff;
-  padding: 12px 18px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-family: var(--mono);
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all .25s;
-  pointer-events: none;
-  z-index: 9999;
-  max-width: 320px;
-  box-shadow: var(--shadow-md);
-}
+/* TOAST */
+#toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: #fff; padding: 12px 18px; border-radius: 8px; font-size: 13px; font-family: var(--mono); opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 9999; max-width: 320px; box-shadow: var(--shadow-md); }
 #toast.show { opacity: 1; transform: translateY(0); }
 #toast.ok  { background: var(--green); }
 #toast.err { background: var(--red); }
 
-/* ─── SPINNER ────────────────────────────────────────────────── */
-.spin {
-  width: 13px; height: 13px;
-  border: 2px solid rgba(255,255,255,.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: rotate .65s linear infinite;
-}
-@keyframes rotate { to { transform: rotate(360deg); } }
+.spin { width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: rot .65s linear infinite; display: inline-block; }
+@keyframes rot { to { transform: rotate(360deg); } }
 
-/* ─── RESPONSIVE ─────────────────────────────────────────────── */
 @media (max-width: 600px) {
   header { flex-direction: column; gap: 10px; }
-  .privacy-badge { align-self: flex-start; }
   .merge-card { flex-direction: column; align-items: stretch; }
   .btn-merge { justify-content: center; }
-  .output-row { min-width: unset; }
+  #file-list.gallery-view { grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); }
+  .toolbar { gap: 6px; }
 }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- HEADER -->
   <header>
-    <div class="wordmark">
+    <div>
       <div class="wordmark-title">PDF<span>.</span>MERGE</div>
       <div class="wordmark-sub">Free · Local · No Upload</div>
     </div>
     <div class="privacy-badge">🔒 100% in your browser</div>
   </header>
 
-  <!-- STEP 1: DROP ZONE -->
   <div class="step-label">01 — Add Files</div>
   <div class="drop-zone" id="drop-zone">
     <input type="file" id="file-input" accept=".pdf,application/pdf" multiple>
     <span class="dz-icon">📑</span>
     <div class="dz-title">Drop PDFs here</div>
-    <div class="dz-sub">or click to browse &nbsp;·&nbsp; <strong>multiple files OK</strong> &nbsp;·&nbsp; PDF only</div>
+    <div class="dz-sub">or click to browse &nbsp;·&nbsp; <strong>multiple files OK</strong></div>
   </div>
 
-  <!-- STEP 2: FILE QUEUE -->
   <div id="queue-section">
     <div class="step-label">02 — Order &amp; Page Ranges</div>
-    <div class="queue-header">
+    <div class="toolbar">
       <div class="queue-count" id="queue-count">0 files</div>
-      <button class="link-btn" onclick="clearAll()">✕ clear all</button>
-    </div>
-    <div id="file-list"></div>
 
-    <!-- STEP 3: MERGE -->
+      <div class="view-toggle">
+        <button class="view-btn active" id="vbtn-gallery" title="Gallery view" onclick="switchView('gallery')">⊞</button>
+        <button class="view-btn"         id="vbtn-list"    title="List view"    onclick="switchView('list')">☰</button>
+      </div>
+
+      <div class="sort-wrap" id="sort-wrap">
+        <button class="sort-btn" id="sort-btn" onclick="toggleSort()">
+          <span id="sort-label">⇅ Sort</span> ▾
+        </button>
+        <div class="sort-menu" id="sort-menu">
+          <div class="sort-group">
+            <button class="sort-opt" onclick="applySort('name-asc','🔤 A→Z')">🔤 Name A → Z</button>
+            <button class="sort-opt" onclick="applySort('name-desc','🔤 Z→A')">🔤 Name Z → A</button>
+          </div>
+          <div class="sort-group">
+            <button class="sort-opt" onclick="applySort('pages-desc','📄 Most pages')">📄 Most pages first</button>
+            <button class="sort-opt" onclick="applySort('pages-asc','📄 Fewest pages')">📄 Fewest pages first</button>
+          </div>
+          <div class="sort-group">
+            <button class="sort-opt" onclick="applySort('size-desc','📦 Largest')">📦 Largest first</button>
+            <button class="sort-opt" onclick="applySort('size-asc','📦 Smallest')">📦 Smallest first</button>
+          </div>
+          <div class="sort-group">
+            <button class="sort-opt" onclick="applySort('added','⇅ Sort')">🕐 Added order (reset)</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="tb-btn" title="Add more PDFs">
+        ＋ Add more
+        <input type="file" id="add-more-input" accept=".pdf,application/pdf" multiple>
+      </button>
+      <button class="tb-btn danger" onclick="clearAll()">✕ Clear</button>
+    </div>
+
+    <div id="file-list" class="gallery-view"></div>
+
     <div class="step-label">03 — Merge</div>
     <div class="merge-card">
       <div class="output-row">
@@ -612,440 +342,431 @@ footer a:hover { color: var(--accent); }
     </div>
   </div>
 
-  <!-- PROGRESS -->
   <div id="progress-section">
     <div class="prog-row">
       <span class="prog-text" id="prog-text">Preparing…</span>
-      <span class="prog-pct" id="prog-pct">0%</span>
+      <span class="prog-pct"  id="prog-pct">0%</span>
     </div>
-    <div class="prog-track">
-      <div class="prog-fill" id="prog-fill"></div>
-    </div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
   </div>
 
-  <!-- RESULT -->
   <div id="result-section">
     <div class="result-top">
       <div class="result-emoji">✅</div>
       <div>
         <div class="result-title">Merge complete!</div>
-        <div class="result-meta" id="result-meta">Ready to download.</div>
+        <div class="result-meta" id="result-meta"></div>
       </div>
     </div>
     <div class="result-btns">
-      <button class="btn btn-dl" id="dl-btn" onclick="downloadFile()">⬇ Download PDF</button>
+      <button class="btn btn-dl"    onclick="downloadFile()">⬇ Download PDF</button>
       <button class="btn btn-ghost" onclick="resetAfterMerge()">↩ Merge again</button>
     </div>
   </div>
 
-  <!-- FOOTER -->
   <footer>
-    Your files never leave your device. &nbsp;·&nbsp;
+    Your files never leave your device &nbsp;·&nbsp;
     Powered by <a href="https://pdf-lib.js.org" target="_blank">pdf-lib</a> &amp;
     <a href="https://sortablejs.github.io/Sortable/" target="_blank">SortableJS</a>
-    <br>
-    <a href="https://github.com" target="_blank">View on GitHub</a> &nbsp;·&nbsp; Free forever
+    <br><a href="https://github.com" target="_blank">View on GitHub</a> &nbsp;·&nbsp; Free forever
   </footer>
+</div>
 
-</div><!-- .page -->
+<!-- RANGE MODAL -->
+<div class="modal-backdrop" id="range-modal" onclick="backdropClose(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Select Pages</div>
+        <div class="modal-filename" id="modal-fname"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="rp-row">
+      <span class="rp-lbl">Pages:</span>
+      <input class="rp-input" id="modal-input" type="text"
+        placeholder="e.g. 1-3, 5, 7-9  (blank = all)"
+        oninput="onModalInput(this.value)"
+        onkeydown="if(event.key==='Enter')applyModal()">
+    </div>
+    <div class="qtags" id="modal-qtags"></div>
+    <div class="rp-preview" id="modal-preview"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-apply"  onclick="applyModal()">Apply</button>
+    </div>
+  </div>
+</div>
 
 <div id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  STATE
-// ═══════════════════════════════════════════════════════════════
-let files   = [];   // { id, name, sizeStr, pageCount, bytes, range }
-let result  = null; // Uint8Array of merged PDF
-let sortable;
+// ══════════════════════════════════════════
+let files       = [];
+let result      = null;
+let sortable    = null;
+let view        = 'gallery';
+let modalId     = null;
 
-// ═══════════════════════════════════════════════════════════════
-//  DROP ZONE
-// ═══════════════════════════════════════════════════════════════
+const HUES = [12, 32, 195, 215, 258, 320, 145, 48, 280, 168];
+
+// ══════════════════════════════════════════
+//  WIRING
+// ══════════════════════════════════════════
 const zone = document.getElementById('drop-zone');
-
 zone.addEventListener('dragenter', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-zone.addEventListener('dragover',  e => { e.preventDefault(); });
+zone.addEventListener('dragover',  e => e.preventDefault());
 zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over'); });
-zone.addEventListener('drop', e => {
-  e.preventDefault();
-  zone.classList.remove('drag-over');
-  ingestFiles([...e.dataTransfer.files]);
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); ingest([...e.dataTransfer.files]); });
+
+document.getElementById('file-input').addEventListener('change',    e => { ingest([...e.target.files]); e.target.value=''; });
+document.getElementById('add-more-input').addEventListener('change', e => { ingest([...e.target.files]); e.target.value=''; });
+document.addEventListener('click', e => { if (!document.getElementById('sort-wrap').contains(e.target)) closeSortMenu(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && e.target.tagName !== 'INPUT' && files.length && !document.getElementById('range-modal').classList.contains('open')) startMerge();
 });
 
-document.getElementById('file-input').addEventListener('change', e => {
-  ingestFiles([...e.target.files]);
-  e.target.value = '';
-});
-
-// ═══════════════════════════════════════════════════════════════
-//  INGEST FILES
-// ═══════════════════════════════════════════════════════════════
-async function ingestFiles(raw) {
-  const pdfs = raw.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
-  const others = raw.length - pdfs.length;
-  if (others > 0) toast(`${others} non-PDF file(s) skipped.`, 'err');
+// ══════════════════════════════════════════
+//  INGEST
+// ══════════════════════════════════════════
+async function ingest(raw) {
+  const pdfs = raw.filter(f => f.type==='application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+  if (raw.length - pdfs.length) toast(`${raw.length-pdfs.length} non-PDF skipped`, 'err');
   if (!pdfs.length) return;
-
   for (const f of pdfs) {
     try {
       const bytes = new Uint8Array(await f.arrayBuffer());
       const doc   = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
-      files.push({
-        id:        uid(),
-        name:      f.name,
-        sizeStr:   fmtSize(f.size),
-        pageCount: doc.getPageCount(),
-        bytes,
-        range:     ''
-      });
-    } catch(err) {
-      toast(`Cannot read "${f.name}": ${err.message}`, 'err');
-    }
+      files.push({ id: uid(), name: f.name, sizeB: f.size, sizeStr: fmtSize(f.size), pageCount: doc.getPageCount(), bytes, range: '', addedAt: Date.now() });
+    } catch(e) { toast(`Can't read "${f.name}": ${e.message}`, 'err'); }
   }
   render();
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  RENDER FILE LIST
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════
+//  VIEW
+// ══════════════════════════════════════════
+function switchView(v) {
+  view = v;
+  document.getElementById('vbtn-gallery').classList.toggle('active', v==='gallery');
+  document.getElementById('vbtn-list').classList.toggle('active', v==='list');
+  render();
+}
+
+// ══════════════════════════════════════════
+//  SORT
+// ══════════════════════════════════════════
+function toggleSort() {
+  document.getElementById('sort-menu').classList.toggle('open');
+  document.getElementById('sort-btn').classList.toggle('menu-open');
+}
+function closeSortMenu() {
+  document.getElementById('sort-menu').classList.remove('open');
+  document.getElementById('sort-btn').classList.remove('menu-open');
+}
+function applySort(key, label) {
+  closeSortMenu();
+  document.getElementById('sort-label').textContent = label;
+  document.querySelectorAll('.sort-opt').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  const cmp = {
+    'name-asc':   (a,b) => a.name.localeCompare(b.name),
+    'name-desc':  (a,b) => b.name.localeCompare(a.name),
+    'pages-desc': (a,b) => b.pageCount - a.pageCount,
+    'pages-asc':  (a,b) => a.pageCount - b.pageCount,
+    'size-desc':  (a,b) => b.sizeB - a.sizeB,
+    'size-asc':   (a,b) => a.sizeB - b.sizeB,
+    'added':      (a,b) => a.addedAt - b.addedAt,
+  };
+  if (cmp[key]) files.sort(cmp[key]);
+  render();
+  toast(`Sorted: ${label.replace(/[🔤📄📦⇅⏱] /,'')}`, 'ok');
+}
+
+// ══════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════
 function render() {
   const qs = document.getElementById('queue-section');
   const fl = document.getElementById('file-list');
-
-  if (!files.length) { qs.classList.remove('visible'); return; }
+  if (!files.length) { qs.classList.remove('visible'); if (sortable) { sortable.destroy(); sortable=null; } return; }
   qs.classList.add('visible');
+  const tp = files.reduce((a,f)=>a+pagesFor(f),0);
+  document.getElementById('queue-count').innerHTML = `<strong>${files.length}</strong> file${files.length!==1?'s':''} &nbsp;·&nbsp; ${tp} pages total`;
+  fl.className = view==='gallery' ? 'gallery-view' : 'list-view';
+  view==='gallery' ? renderGallery(fl) : renderList(fl);
+  initSortable(fl);
+}
 
-  // Update count
-  const total = files.reduce((a,f) => a + pageCountFor(f), 0);
-  document.getElementById('queue-count').innerHTML =
-    `<strong>${files.length}</strong> file${files.length !== 1 ? 's' : ''} &nbsp;·&nbsp; ${total} pages selected`;
-
-  // Preserve open range panels
-  const openPanels = new Set([...fl.querySelectorAll('.range-panel.open')].map(el => el.dataset.id));
-
+// ─── GALLERY ─────────────────────────────
+function renderGallery(fl) {
   fl.innerHTML = '';
-  files.forEach((f, idx) => {
-    const card = document.createElement('div');
-    card.className = 'file-card';
-    card.dataset.id = f.id;
+  files.forEach((f,i) => {
+    const hue = HUES[strHash(f.name) % HUES.length];
+    const rangeSet = f.range && f.range.trim();
+    const rangeLabel = rangeSet ? '✂ '+rangePreview(f.range,f.pageCount).label : null;
+    const c = document.createElement('div');
+    c.className = 'gallery-card'; c.dataset.id = f.id;
+    c.innerHTML = `
+      <div class="gc-thumb" style="background:hsl(${hue},55%,93%)">
+        <div class="gc-thumb-bg" style="background:radial-gradient(circle at 30% 40%,hsl(${hue},65%,70%),hsl(${hue+30},55%,55%))"></div>
+        <div class="gc-thumb-icon">📄</div>
+        <div class="gc-seq">${String(i+1).padStart(2,'0')}</div>
+        <button class="gc-remove" onclick="removeFile('${f.id}')" title="Remove">✕</button>
+      </div>
+      <div class="gc-info">
+        <div class="gc-name" title="${esc(f.name)}">${esc(f.name)}</div>
+        <div class="gc-meta">
+          <span>${f.pageCount}p · ${f.sizeStr}</span>
+          ${rangeLabel ? `<span class="gc-range-badge" onclick="openModal('${f.id}')">${esc(rangeLabel)}</span>` : ''}
+        </div>
+      </div>
+      <div class="gc-actions">
+        <button class="gc-action-btn" onclick="openModal('${f.id}')">✂ pages</button>
+        <button class="gc-action-btn" onclick="dupFile('${f.id}')">⧉ dup</button>
+      </div>
+    `;
+    fl.appendChild(c);
+  });
+}
 
-    const panelOpen = openPanels.has(f.id) ? ' open' : '';
-    const rangeActive = f.range && f.range.trim() !== '' ? ' active' : '';
-
-    card.innerHTML = `
+// ─── LIST ────────────────────────────────
+function renderList(fl) {
+  const open = new Set([...fl.querySelectorAll('.range-panel.open')].map(el=>el.dataset.id));
+  fl.innerHTML = '';
+  files.forEach((f,i) => {
+    const rangeSet = f.range && f.range.trim();
+    const c = document.createElement('div');
+    c.className = 'file-card'; c.dataset.id = f.id;
+    c.innerHTML = `
       <div class="card-top">
         <div class="drag-handle" title="Drag to reorder">⠿</div>
-        <div class="seq-num">${String(idx + 1).padStart(2,'0')}</div>
+        <div class="seq-num">${String(i+1).padStart(2,'0')}</div>
         <div class="file-icon">📄</div>
         <div class="file-info">
           <div class="file-name" title="${esc(f.name)}">${esc(f.name)}</div>
-          <div class="file-meta">${f.sizeStr} &nbsp;·&nbsp; ${f.pageCount} pages</div>
+          <div class="file-meta">${f.sizeStr} · ${f.pageCount} pages</div>
         </div>
         <div class="card-actions">
-          <button class="range-btn${rangeActive}" onclick="toggleRange('${f.id}')" title="Select page range">
-            ${f.range ? '✂ ' + previewRange(f.range, f.pageCount).label : '✂ pages'}
+          <button class="ic-btn dup" onclick="dupFile('${f.id}')">⧉ dup</button>
+          <button class="ic-btn${rangeSet?' range-active':''}" id="rb-${f.id}" onclick="toggleRP('${f.id}')">
+            ${rangeSet?'✂ '+rangePreview(f.range,f.pageCount).label:'✂ pages'}
           </button>
-          <button class="remove-btn" onclick="removeFile('${f.id}')" title="Remove">✕</button>
+          <button class="remove-btn" onclick="removeFile('${f.id}')">✕</button>
         </div>
       </div>
-      <div class="range-panel${panelOpen}" data-id="${f.id}">
-        <div class="range-input-row">
-          <span class="range-lbl">Pages:</span>
-          <input
-            class="range-input${validateRange(f.range, f.pageCount) === false ? ' error' : ''}"
-            type="text"
+      <div class="range-panel${open.has(f.id)?' open':''}" data-id="${f.id}">
+        <div class="rp-row">
+          <span class="rp-lbl">Pages:</span>
+          <input class="rp-input${validateR(f.range,f.pageCount)?'':' error'}" type="text"
             placeholder="e.g. 1-3, 5, 7-9  (blank = all)"
             value="${esc(f.range)}"
-            oninput="onRangeInput('${f.id}', this.value)"
-            onkeydown="if(event.key==='Enter') this.blur()"
-          >
+            oninput="onRPInput('${f.id}',this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()">
         </div>
-        <div class="quick-tags">
-          <button class="qtag" onclick="setRange('${f.id}', '')">All pages</button>
-          <button class="qtag" onclick="setRange('${f.id}', '1')">First page</button>
-          <button class="qtag" onclick="setRange('${f.id}', '${f.pageCount}')">Last page</button>
-          ${f.pageCount > 1 ? `<button class="qtag" onclick="setRange('${f.id}', '1-${Math.ceil(f.pageCount/2)}')">First half</button>` : ''}
-          ${f.pageCount > 1 ? `<button class="qtag" onclick="setRange('${f.id}', '${Math.ceil(f.pageCount/2)+1}-${f.pageCount}')">Second half</button>` : ''}
-        </div>
-        <div class="range-preview" id="preview-${f.id}">
-          ${buildPreviewHtml(f)}
-        </div>
+        <div class="qtags">${makeQtags(f)}</div>
+        <div class="rp-preview" id="pv-${f.id}">${previewHtml(f)}</div>
       </div>
     `;
-    fl.appendChild(card);
+    fl.appendChild(c);
   });
+}
 
-  // Init SortableJS
+function makeQtags(f) {
+  const h = Math.ceil(f.pageCount/2);
+  return [
+    `<button class="qtag" onclick="setRP('${f.id}','')">All</button>`,
+    `<button class="qtag" onclick="setRP('${f.id}','1')">First</button>`,
+    `<button class="qtag" onclick="setRP('${f.id}','${f.pageCount}')">Last</button>`,
+    f.pageCount>1?`<button class="qtag" onclick="setRP('${f.id}','1-${h}')">First half</button>`:'',
+    f.pageCount>1?`<button class="qtag" onclick="setRP('${f.id}','${h+1}-${f.pageCount}')">Second half</button>`:'',
+    f.pageCount>1?`<button class="qtag" onclick="setRP('${f.id}','${f.pageCount}-1')">Reverse</button>`:'',
+  ].join('');
+}
+
+// ══════════════════════════════════════════
+//  SORTABLE
+// ══════════════════════════════════════════
+function initSortable(fl) {
   if (sortable) sortable.destroy();
   sortable = new Sortable(fl, {
-    handle: '.drag-handle',
-    animation: 180,
+    animation: 200,
     ghostClass: 'sortable-ghost',
     chosenClass: 'sortable-chosen',
+    handle: view==='gallery' ? undefined : '.drag-handle',
     onEnd: () => {
-      const order = [...fl.querySelectorAll('.file-card')].map(el => el.dataset.id);
-      files = order.map(id => files.find(f => f.id === id));
+      const order = [...fl.children].map(el=>el.dataset.id);
+      files = order.map(id=>files.find(f=>f.id===id));
       render();
     }
   });
 }
 
-function buildPreviewHtml(f) {
-  if (!f.range || !f.range.trim()) {
-    return `<span class="pages-label">All ${f.pageCount} pages</span>`;
-  }
-  const pages = parseRange(f.range, f.pageCount);
-  if (pages === null) {
-    return `<span class="error-label">⚠ Invalid range — will use all pages</span>`;
-  }
-  if (pages.length === 0) {
-    return `<span class="error-label">⚠ No pages selected — will use all pages</span>`;
-  }
-  const display = pages.length <= 20 ? pages.join(', ') : pages.slice(0,20).join(', ') + ` … (+${pages.length-20} more)`;
-  return `<span class="pages-label">${pages.length} page${pages.length!==1?'s':''} selected:</span> ${display}`;
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  RANGE HELPERS
-// ═══════════════════════════════════════════════════════════════
-function parseRange(rangeStr, total) {
-  if (!rangeStr || !rangeStr.trim()) return null; // null = all pages
-  const parts = rangeStr.split(',');
+// ══════════════════════════════════════════
+//  RANGE LOGIC
+// ══════════════════════════════════════════
+function parseR(str, total) {
+  if (!str||!str.trim()) return null;
   const pages = new Set();
-  for (const part of parts) {
-    const p = part.trim();
-    if (!p) continue;
-    const match = p.match(/^(\d+)(?:-(\d+))?$/);
-    if (!match) return null; // invalid
-    const a = parseInt(match[1]);
-    const b = match[2] ? parseInt(match[2]) : a;
-    if (a < 1 || b > total || a > b) return null;
-    for (let i = a; i <= b; i++) pages.add(i);
+  for (const part of str.split(',')) {
+    const p=part.trim(); if(!p) continue;
+    const m=p.match(/^(\d+)(?:-(\d+))?$/);
+    if(!m) return null;
+    const a=+m[1], b=m[2]?+m[2]:a;
+    if(a<1||b>total||a>b) return null;
+    for(let i=a;i<=b;i++) pages.add(i);
   }
-  return [...pages].sort((a, b) => a - b);
+  return [...pages].sort((a,b)=>a-b);
+}
+function validateR(str,total){ if(!str||!str.trim())return true; return parseR(str,total)!==null; }
+function rangePreview(str,total){ const p=parseR(str,total); if(!p||!p.length)return{label:'pages'}; return{label:`${p.length}p`}; }
+function pagesFor(f){ const p=parseR(f.range,f.pageCount); if(!p)return f.pageCount; return p.length||f.pageCount; }
+function previewHtml(f) {
+  if(!f.range||!f.range.trim()) return `<span class="pages-label">All ${f.pageCount} pages</span>`;
+  const p=parseR(f.range,f.pageCount);
+  if(!p) return `<span class="error-label">⚠ Invalid range — will use all pages</span>`;
+  if(!p.length) return `<span class="error-label">⚠ Empty range — will use all pages</span>`;
+  const d=p.length<=20?p.join(', '):p.slice(0,20).join(', ')+` … (+${p.length-20})`;
+  return `<span class="pages-label">${p.length} page${p.length!==1?'s':''} selected:</span> ${d}`;
 }
 
-function validateRange(rangeStr, total) {
-  if (!rangeStr || !rangeStr.trim()) return true;
-  return parseRange(rangeStr, total) !== null;
+// ─── LIST RANGE ───────────────────────────
+function toggleRP(id){ const el=document.querySelector(`.range-panel[data-id="${id}"]`); if(el)el.classList.toggle('open'); }
+function onRPInput(id,val){
+  const f=files.find(x=>x.id===id); if(!f)return;
+  f.range=val;
+  const pv=document.getElementById(`pv-${id}`); if(pv)pv.innerHTML=previewHtml(f);
+  const inp=document.querySelector(`.range-panel[data-id="${id}"] .rp-input`); if(inp)inp.classList.toggle('error',!validateR(val,f.pageCount));
+  const rb=document.getElementById(`rb-${id}`);
+  if(rb){ rb.textContent=val.trim()?'✂ '+rangePreview(val,f.pageCount).label:'✂ pages'; rb.classList.toggle('range-active',!!val.trim()); }
+  updateCount();
+}
+function setRP(id,val){
+  const f=files.find(x=>x.id===id); if(!f)return; f.range=val;
+  const panel=document.querySelector(`.range-panel[data-id="${id}"]`);
+  if(panel){ const inp=panel.querySelector('.rp-input'); if(inp){inp.value=val;inp.classList.remove('error');} const pv=document.getElementById(`pv-${id}`); if(pv)pv.innerHTML=previewHtml(f); }
+  const rb=document.getElementById(`rb-${id}`);
+  if(rb){ rb.textContent=val.trim()?'✂ '+rangePreview(val,f.pageCount).label:'✂ pages'; rb.classList.toggle('range-active',!!val.trim()); }
+  updateCount();
+}
+function updateCount(){ const tp=files.reduce((a,f)=>a+pagesFor(f),0); document.getElementById('queue-count').innerHTML=`<strong>${files.length}</strong> file${files.length!==1?'s':''} &nbsp;·&nbsp; ${tp} pages total`; }
+
+// ─── MODAL (gallery) ──────────────────────
+function openModal(id){
+  const f=files.find(x=>x.id===id); if(!f)return;
+  modalId=id;
+  document.getElementById('modal-fname').textContent=f.name;
+  document.getElementById('modal-input').value=f.range;
+  document.getElementById('modal-input').classList.remove('error');
+  document.getElementById('modal-preview').innerHTML=previewHtml(f);
+  const h=Math.ceil(f.pageCount/2);
+  document.getElementById('modal-qtags').innerHTML=[
+    `<button class="qtag" onclick="setModalR('')">All</button>`,
+    `<button class="qtag" onclick="setModalR('1')">First</button>`,
+    `<button class="qtag" onclick="setModalR('${f.pageCount}')">Last</button>`,
+    f.pageCount>1?`<button class="qtag" onclick="setModalR('1-${h}')">First half</button>`:'',
+    f.pageCount>1?`<button class="qtag" onclick="setModalR('${h+1}-${f.pageCount}')">Second half</button>`:'',
+    f.pageCount>1?`<button class="qtag" onclick="setModalR('${f.pageCount}-1')">Reverse</button>`:'',
+  ].join('');
+  document.getElementById('range-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('modal-input').focus(),60);
+}
+function closeModal(){ document.getElementById('range-modal').classList.remove('open'); modalId=null; }
+function backdropClose(e){ if(e.target===document.getElementById('range-modal'))closeModal(); }
+function setModalR(val){ document.getElementById('modal-input').value=val; onModalInput(val); }
+function onModalInput(val){
+  const f=files.find(x=>x.id===modalId); if(!f)return;
+  document.getElementById('modal-input').classList.toggle('error',!validateR(val,f.pageCount));
+  document.getElementById('modal-preview').innerHTML=previewHtml({...f,range:val});
+}
+function applyModal(){
+  const f=files.find(x=>x.id===modalId); if(!f)return;
+  const val=document.getElementById('modal-input').value;
+  if(!validateR(val,f.pageCount)){ toast('Invalid page range','err'); return; }
+  f.range=val; closeModal(); render(); toast('Page range updated ✓','ok');
 }
 
-function previewRange(rangeStr, total) {
-  const pages = parseRange(rangeStr, total);
-  if (!pages || !pages.length) return { label: '✂ pages' };
-  return { label: `${pages.length}p` };
+// ══════════════════════════════════════════
+//  FILE OPERATIONS
+// ══════════════════════════════════════════
+function dupFile(id){
+  const f=files.find(x=>x.id===id); if(!f)return;
+  const clone={...f,id:uid(),range:'',addedAt:Date.now()};
+  files.splice(files.indexOf(f)+1,0,clone);
+  render(); toast(`Duplicated "${f.name.length>28?f.name.slice(0,26)+'…':f.name}"`, 'ok');
 }
+function removeFile(id){ files=files.filter(f=>f.id!==id); render(); }
+function clearAll(){ files=[]; result=null; hideProgress(); hideResult(); render(); }
 
-function pageCountFor(f) {
-  const pages = parseRange(f.range, f.pageCount);
-  if (!pages) return f.pageCount;
-  return pages.length || f.pageCount;
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  RANGE INTERACTIONS
-// ═══════════════════════════════════════════════════════════════
-function toggleRange(id) {
-  const f = files.find(x => x.id === id);
-  if (!f) return;
-  const panel = document.querySelector(`.range-panel[data-id="${id}"]`);
-  if (!panel) return;
-  panel.classList.toggle('open');
-}
-
-function onRangeInput(id, val) {
-  const f = files.find(x => x.id === id);
-  if (!f) return;
-  f.range = val;
-  const preview = document.getElementById(`preview-${id}`);
-  const input   = document.querySelector(`.range-panel[data-id="${id}"] .range-input`);
-  if (preview) preview.innerHTML = buildPreviewHtml(f);
-  if (input)   input.classList.toggle('error', !validateRange(val, f.pageCount));
-  // Update range button label
-  const btn = document.querySelector(`.file-card[data-id="${id}"] .range-btn`);
-  if (btn) {
-    btn.textContent = val.trim() ? '✂ ' + previewRange(val, f.pageCount).label : '✂ pages';
-    btn.classList.toggle('active', !!val.trim());
-  }
-  // Update count
-  const total = files.reduce((a,f) => a + pageCountFor(f), 0);
-  document.getElementById('queue-count').innerHTML =
-    `<strong>${files.length}</strong> file${files.length !== 1 ? 's' : ''} &nbsp;·&nbsp; ${total} pages selected`;
-}
-
-function setRange(id, val) {
-  const f = files.find(x => x.id === id);
-  if (!f) return;
-  f.range = val;
-  // Update input without full re-render
-  const panel = document.querySelector(`.range-panel[data-id="${id}"]`);
-  if (panel) {
-    const input = panel.querySelector('.range-input');
-    if (input) { input.value = val; input.classList.remove('error'); }
-    const preview = document.getElementById(`preview-${id}`);
-    if (preview) preview.innerHTML = buildPreviewHtml(f);
-  }
-  const btn = document.querySelector(`.file-card[data-id="${id}"] .range-btn`);
-  if (btn) {
-    btn.textContent = val.trim() ? '✂ ' + previewRange(val, f.pageCount).label : '✂ pages';
-    btn.classList.toggle('active', !!val.trim());
-  }
-  const total = files.reduce((a,f) => a + pageCountFor(f), 0);
-  document.getElementById('queue-count').innerHTML =
-    `<strong>${files.length}</strong> file${files.length !== 1 ? 's' : ''} &nbsp;·&nbsp; ${total} pages selected`;
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  REMOVE / CLEAR
-// ═══════════════════════════════════════════════════════════════
-function removeFile(id) {
-  files = files.filter(f => f.id !== id);
-  render();
-}
-function clearAll() {
-  files = [];
-  result = null;
-  hideProgress();
-  hideResult();
-  render();
-}
-
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  MERGE
-// ═══════════════════════════════════════════════════════════════
-async function startMerge() {
-  if (!files.length) { toast('Add at least one PDF first.', 'err'); return; }
-
-  const btn = document.getElementById('merge-btn');
-  btn.disabled = true;
-  document.getElementById('merge-btn-icon').innerHTML = '<div class="spin"></div>';
-  document.getElementById('merge-btn-text').textContent = 'Merging…';
-
-  hideResult();
-  showProgress(0, 'Creating output document…');
-
+// ══════════════════════════════════════════
+async function startMerge(){
+  if(!files.length){ toast('Add at least one PDF first','err'); return; }
+  const btn=document.getElementById('merge-btn');
+  btn.disabled=true;
+  document.getElementById('merge-btn-icon').innerHTML='<div class="spin"></div>';
+  document.getElementById('merge-btn-text').textContent='Merging…';
+  hideResult(); showProgress(0,'Creating output document…');
   try {
-    const merged = await PDFLib.PDFDocument.create();
-    const total  = files.length;
-
-    for (let i = 0; i < total; i++) {
-      const f = files[i];
-      const pct = Math.round(((i) / total) * 90);
-      setProgress(pct, `Processing: ${f.name} (${i+1}/${total})`);
-
-      const src   = await PDFLib.PDFDocument.load(f.bytes, { ignoreEncryption: true });
-      const pages = parseRange(f.range, f.pageCount);
-      let indices;
-      if (!pages || !pages.length) {
-        indices = Array.from({ length: src.getPageCount() }, (_, k) => k);
-      } else {
-        indices = pages.map(p => p - 1); // convert 1-based to 0-based
-      }
-
-      const copied = await merged.copyPages(src, indices);
-      copied.forEach(p => merged.addPage(p));
-
-      // Yield to browser
-      await new Promise(r => setTimeout(r, 0));
+    const merged=await PDFLib.PDFDocument.create();
+    for(let i=0;i<files.length;i++){
+      const f=files[i];
+      setProgress(Math.round((i/files.length)*90),`Processing: ${f.name} (${i+1}/${files.length})`);
+      const src=await PDFLib.PDFDocument.load(f.bytes,{ignoreEncryption:true});
+      const rng=parseR(f.range,f.pageCount);
+      const idx=rng&&rng.length?rng.map(p=>p-1):Array.from({length:src.getPageCount()},(_,k)=>k);
+      const cp=await merged.copyPages(src,idx);
+      cp.forEach(p=>merged.addPage(p));
+      await new Promise(r=>setTimeout(r,0));
     }
-
-    setProgress(95, 'Saving…');
-    await new Promise(r => setTimeout(r, 50));
-    const bytes = await merged.save();
-    result = bytes;
-
-    setProgress(100, 'Done!');
-    await new Promise(r => setTimeout(r, 300));
-    hideProgress();
-    showResult(bytes);
-
-  } catch(err) {
-    hideProgress();
-    toast(`Merge failed: ${err.message}`, 'err');
-    console.error(err);
+    setProgress(95,'Saving…'); await new Promise(r=>setTimeout(r,60));
+    const bytes=await merged.save(); result=bytes;
+    setProgress(100,'Done!'); await new Promise(r=>setTimeout(r,280));
+    hideProgress(); showResult(bytes);
+  } catch(e){
+    hideProgress(); toast(`Merge failed: ${e.message}`,'err'); console.error(e);
   } finally {
-    btn.disabled = false;
-    document.getElementById('merge-btn-icon').textContent = '⚡';
-    document.getElementById('merge-btn-text').textContent = 'Merge PDFs';
+    btn.disabled=false;
+    document.getElementById('merge-btn-icon').textContent='⚡';
+    document.getElementById('merge-btn-text').textContent='Merge PDFs';
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  PROGRESS
-// ═══════════════════════════════════════════════════════════════
-function showProgress(pct, text) {
-  document.getElementById('progress-section').classList.add('visible');
-  setProgress(pct, text);
+function showProgress(p,t){ document.getElementById('progress-section').classList.add('visible'); setProgress(p,t); }
+function setProgress(p,t){ document.getElementById('prog-fill').style.width=p+'%'; document.getElementById('prog-pct').textContent=p+'%'; document.getElementById('prog-text').textContent=t; }
+function hideProgress(){ document.getElementById('progress-section').classList.remove('visible'); }
+function showResult(bytes){
+  document.getElementById('result-section').classList.add('visible');
+  const tp=files.reduce((a,f)=>a+pagesFor(f),0);
+  document.getElementById('result-meta').textContent=`${fmtSize(bytes.byteLength)} · ${tp} pages from ${files.length} files`;
 }
-function setProgress(pct, text) {
-  document.getElementById('prog-fill').style.width = pct + '%';
-  document.getElementById('prog-pct').textContent  = pct + '%';
-  document.getElementById('prog-text').textContent = text;
+function hideResult(){ document.getElementById('result-section').classList.remove('visible'); }
+function downloadFile(){
+  if(!result)return;
+  const name=document.getElementById('output-name').value.trim()||'merged.pdf';
+  const blob=new Blob([result],{type:'application/pdf'});
+  const url=URL.createObjectURL(blob);
+  const a=Object.assign(document.createElement('a'),{href:url,download:name.endsWith('.pdf')?name:name+'.pdf'});
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  toast('Download started! 🎉','ok');
 }
-function hideProgress() {
-  document.getElementById('progress-section').classList.remove('visible');
-}
+function resetAfterMerge(){ result=null; hideResult(); toast('Ready for another merge','ok'); }
 
-// ═══════════════════════════════════════════════════════════════
-//  RESULT
-// ═══════════════════════════════════════════════════════════════
-function showResult(bytes) {
-  const sec = document.getElementById('result-section');
-  sec.classList.add('visible');
-  document.getElementById('result-meta').textContent =
-    `${fmtSize(bytes.byteLength)} · ${getPageCountLabel()}`;
-}
-function getPageCountLabel() {
-  return `${files.reduce((a,f) => a + pageCountFor(f), 0)} pages merged`;
-}
-function hideResult() {
-  document.getElementById('result-section').classList.remove('visible');
-}
-function downloadFile() {
-  if (!result) return;
-  const name = document.getElementById('output-name').value.trim() || 'merged.pdf';
-  const blob = new Blob([result], { type: 'application/pdf' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = name.endsWith('.pdf') ? name : name + '.pdf';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-  toast('Download started! 🎉', 'ok');
-}
-function resetAfterMerge() {
-  result = null;
-  hideResult();
-  toast('Ready for another merge.', 'ok');
-}
-
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  UTILS
-// ═══════════════════════════════════════════════════════════════
-function uid()       { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
-function esc(s)      { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function fmtSize(b)  {
-  if (b < 1024)        return b + ' B';
-  if (b < 1048576)     return (b/1024).toFixed(1) + ' KB';
-  return (b/1048576).toFixed(2) + ' MB';
-}
+// ══════════════════════════════════════════
+function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtSize(b){ if(b<1024)return b+' B'; if(b<1048576)return(b/1024).toFixed(1)+' KB'; return(b/1048576).toFixed(2)+' MB'; }
+function strHash(s){ let h=0; for(const c of s)h=(h*31+c.charCodeAt(0))>>>0; return h; }
 
-let toastTimer;
-function toast(msg, type='') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'show ' + type;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ''; }, 3200);
-}
-
-// Keyboard: Enter anywhere to trigger merge
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.tagName !== 'INPUT' && files.length) {
-    startMerge();
-  }
-});
+let toastT;
+function toast(msg,type=''){ const el=document.getElementById('toast'); el.textContent=msg; el.className='show '+type; clearTimeout(toastT); toastT=setTimeout(()=>{el.className='';},3200); }
 </script>
 </body>
 </html>
